@@ -1,0 +1,652 @@
+================================================================================
+  PROJET TICKETFLOW / CURSOR VGG — TOUT LE CODE SOURCE EN UN SEUL FICHIER
+  Généré le 2025-02-17 — À usage de sauvegarde / lecture uniquement
+================================================================================
+
+
+################################################################################
+# index.html
+################################################################################
+
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>TicketFlow - Achetez et revendez vos billets en toute confiance</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
+
+################################################################################
+# package.json
+################################################################################
+
+{"name":"viagogo-clone-billets","version":"1.0.0","private":true,"scripts":{"dev":"vite","build":"vite build","preview":"vite preview","lint":"eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0"},"dependencies":{"react":"^18.3.1","react-dom":"^18.3.1","react-router-dom":"^6.30.0"},"devDependencies":{"@types/react":"^18.3.3","@types/react-dom":"^18.3.3","@typescript-eslint/eslint-plugin":"^8.0.1","@typescript-eslint/parser":"^8.0.1","@vitejs/plugin-react-swc":"^3.7.0","eslint":"^9.9.0","eslint-plugin-react-hooks":"^5.1.0-rc.0","eslint-plugin-react-refresh":"^0.4.11","typescript":"^5.6.2","vite":"^5.4.0"}}
+
+
+################################################################################
+# vite.config.ts
+################################################################################
+
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react-swc';
+
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
+
+export default defineConfig({
+  root: __dirname,
+  plugins: [react()],
+  server: {
+    port: 5173,
+    strictPort: false
+  },
+  build: {
+    rollupOptions: {
+      input: path.resolve(__dirname, 'index.html')
+    }
+  }
+});
+
+
+################################################################################
+# src/main.tsx
+################################################################################
+
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom';
+import { App } from './App';
+import './styles.css';
+import { AuthProvider } from './state/auth';
+import { CartProvider } from './state/cart';
+import { CurrencyProvider } from './state/currency';
+
+ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
+  <React.StrictMode>
+    <BrowserRouter>
+      <AuthProvider>
+        <CurrencyProvider>
+          <CartProvider>
+            <App />
+          </CartProvider>
+        </CurrencyProvider>
+      </AuthProvider>
+    </BrowserRouter>
+  </React.StrictMode>
+);
+
+
+################################################################################
+# src/App.tsx
+################################################################################
+
+import React, { useEffect } from 'react';
+import { Routes, Route } from 'react-router-dom';
+import { Layout } from './components/Layout';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { seedExampleSalesIfEmpty } from './shared/exampleSales';
+import { HomeTickets } from './pages/HomeTickets';
+import { EventTickets } from './pages/EventTickets';
+import { BrunoMarsListingPage } from './pages/BrunoMarsListingPage';
+import { MarketplaceEventPage } from './pages/MarketplaceEventPage';
+import { BtsTickets } from './pages/BtsTickets';
+import { ColdplayTickets } from './pages/ColdplayTickets';
+import { SellTickets } from './pages/SellTickets';
+import { Login } from './pages/Login';
+import { Account } from './pages/Account';
+import { VentesPassees } from './pages/VentesPassees';
+import { Checkout } from './pages/Checkout';
+import { EventDateDetails } from './pages/EventDateDetails';
+import { Faq } from './pages/Faq';
+
+export const App = () => {
+  useEffect(() => {
+    seedExampleSalesIfEmpty();
+  }, []);
+
+  return (
+    <Layout>
+      <ErrorBoundary>
+        <div className="page-routes">
+          <Routes>
+            <Route path="/" element={<HomeTickets />} />
+            <Route path="/artiste/:artistSlug" element={<EventTickets />} />
+            <Route path="/concerts/bruno-mars" element={<BrunoMarsListingPage />} />
+            <Route path="/evenement/:eventId" element={<EventDateDetails />} />
+            <Route path="/concerts/bts" element={<BtsTickets />} />
+            <Route path="/concerts/coldplay" element={<ColdplayTickets />} />
+            <Route path="/vendre" element={<SellTickets />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/mon-compte" element={<Account />} />
+            <Route path="/mes-ventes" element={<VentesPassees />} />
+            <Route path="/faq" element={<Faq />} />
+            <Route path="/checkout" element={<Checkout />} />
+          </Routes>
+        </div>
+      </ErrorBoundary>
+    </Layout>
+  );
+};
+
+export default App;
+
+
+################################################################################
+# src/components/Layout.tsx
+################################################################################
+
+import type React from 'react';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useAuth } from '../state/auth';
+import { useCart } from '../state/cart';
+import { useCurrency } from '../state/currency';
+
+export const Layout = ({ children }: { children: React.ReactNode }) => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+  const { items, timeRemaining } = useCart();
+  const { currency, setCurrency } = useCurrency();
+
+  const formatTime = (seconds: number | null) => {
+    if (seconds === null || seconds <= 0) return null;
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const timerDisplay = formatTime(timeRemaining);
+  const isTimerLow = timeRemaining !== null && timeRemaining < 120;
+  const [search, setSearch] = useState('');
+  const [scrolled, setScrolled] = useState(false);
+  const [cartHighlighted, setCartHighlighted] = useState(false);
+
+  useEffect(() => { setSearch(''); }, [location.pathname]);
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+  useEffect(() => {
+    const handleAnimationStart = () => setCartHighlighted(true);
+    const handleAnimationEnd = () => setCartHighlighted(false);
+    window.addEventListener('cart-animation-start', handleAnimationStart);
+    window.addEventListener('cart-animation-end', handleAnimationEnd);
+    return () => {
+      window.removeEventListener('cart-animation-start', handleAnimationStart);
+      window.removeEventListener('cart-animation-end', handleAnimationEnd);
+    };
+  }, []);
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    navigate(`/?q=${encodeURIComponent(search)}`);
+  };
+
+  const cartCount = items.reduce((sum, item) => sum + item.quantity, 0);
+
+  return (
+    <div className="app-root">
+      <div className="top-price-notice" role="note">
+        Les prix sont fixés par les vendeurs et peuvent être inférieurs ou supérieurs à la valeur nominale.
+      </div>
+      <header className={`topbar ${scrolled ? 'scrolled' : ''}`}>
+        <Link to="/" className="logo">TicketFlow</Link>
+        <form className="search" onSubmit={handleSearchSubmit}>
+          <input type="search" placeholder="Rechercher un artiste, un lieu..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          <button type="submit">Rechercher</button>
+        </form>
+        <nav className="nav-main">
+          <div className="currency-tabs" role="tablist" aria-label="Choisir la devise">
+            <button type="button" role="tab" aria-selected={currency === 'EUR'} className={`currency-tab ${currency === 'EUR' ? 'active' : ''}`} onClick={() => setCurrency('EUR')}>€</button>
+            <button type="button" role="tab" aria-selected={currency === 'USD'} className={`currency-tab ${currency === 'USD' ? 'active' : ''}`} onClick={() => setCurrency('USD')}>$</button>
+          </div>
+          <NavLink to="/vendre" className="nav-link">Vendre des billets</NavLink>
+          <NavLink to="/faq" className="nav-link">FAQ</NavLink>
+          <NavLink to="/checkout" className={`nav-link cart-link ${cartHighlighted ? 'cart-highlighted' : ''}`}>
+            <span className="cart-icon">🛒</span>
+            <span className="cart-text">Panier ({cartCount})</span>
+            {timerDisplay && <span className={`cart-timer ${isTimerLow ? 'timer-low' : ''}`}>⏱️ {timerDisplay}</span>}
+          </NavLink>
+          {user ? (
+            <div className="nav-account">
+              <NavLink to="/mon-compte" className="nav-link">Historique</NavLink>
+              <button type="button" className="link-button" onClick={logout}>Déconnexion</button>
+            </div>
+          ) : (
+            <NavLink to="/login" className="nav-link">Connexion</NavLink>
+          )}
+        </nav>
+      </header>
+      <main className="page">{children}</main>
+      <footer className="footer">
+        <span>TicketFlow est une plateforme secondaire de revente de billets sécurisée pour le sport, la musique et le divertissement. TicketFlow n&apos;est pas l&apos;émetteur des billets ; ceux-ci sont délivrés par les organisateurs d&apos;événements ou les billetteries officielles.</span>
+      </footer>
+    </div>
+  );
+};
+
+
+################################################################################
+# src/components/ErrorBoundary.tsx
+################################################################################
+
+import React from 'react';
+import { Link } from 'react-router-dom';
+
+type Props = { children: React.ReactNode };
+type State = { hasError: boolean; error: Error | null };
+
+export class ErrorBoundary extends React.Component<Props, State> {
+  constructor(props: Props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): State {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error('ErrorBoundary caught:', error, info);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      const { error } = this.state;
+      return (
+        <section className="error-fallback">
+          <h1>Une erreur s&apos;est produite</h1>
+          <p className="subtitle">La page n&apos;a pas pu s&apos;afficher. Réessayez ou retournez à l&apos;accueil.</p>
+          {error?.message && (
+            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted, #6B7280)', marginTop: '0.5rem', maxWidth: '480px', marginLeft: 'auto', marginRight: 'auto' }}>Détail : {error.message}</p>
+          )}
+          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap', marginTop: '1.5rem' }}>
+            <button type="button" className="primary" onClick={() => this.setState({ hasError: false, error: null })}>Réessayer</button>
+            <Link to="/" className="secondary" style={{ padding: '0.75rem 1rem', borderRadius: '8px', textDecoration: 'none' }}>Retour à l&apos;accueil</Link>
+          </div>
+        </section>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+
+################################################################################
+# src/state/auth.tsx
+################################################################################
+
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+
+type User = { email: string; name: string; };
+type AuthContextValue = { user: User | null; login: (email: string, password: string) => Promise<void>; logout: () => void; };
+
+const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+const STORAGE_KEY = 'viagogo-clone-user';
+
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      try {
+        setUser(JSON.parse(raw) as User);
+      } catch {
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    }
+  }, []);
+
+  const login = useCallback(async (email: string, password: string) => {
+    if (!email || !email.trim()) throw new Error('Veuillez entrer votre adresse email');
+    if (!email.includes('@')) throw new Error('Email invalide');
+    if (!password || password.length < 1) throw new Error('Mot de passe requis');
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    const fakeUser: User = { email: email.trim(), name: email.split('@')[0] || 'Fan de concerts' };
+    try {
+      setUser(fakeUser);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(fakeUser));
+    } catch (storageError) {
+      setUser(fakeUser);
+      console.warn('Session non persistée (localStorage):', storageError);
+    }
+  }, []);
+
+  const logout = useCallback(() => {
+    setUser(null);
+    localStorage.removeItem(STORAGE_KEY);
+  }, []);
+
+  const value = useMemo(() => ({ user, login, logout }), [login, logout, user]);
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+
+export const useAuth = () => {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  return ctx;
+};
+
+
+################################################################################
+# src/state/cart.tsx
+################################################################################
+
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, useRef } from 'react';
+
+export type TicketItem = { id: string; eventId: string; eventName: string; date: string; city: string; price: number; quantity: number; };
+
+type CartContextValue = {
+  items: TicketItem[];
+  addToCart: (item: Omit<TicketItem, 'quantity'>, quantity?: number) => void;
+  removeFromCart: (id: string) => void;
+  clearCart: () => void;
+  total: number;
+  timeRemaining: number | null;
+};
+
+const CartContext = createContext<CartContextValue | undefined>(undefined);
+const STORAGE_KEY = 'viagogo-clone-cart';
+const EXPIRATION_KEY = 'viagogo-clone-cart-expiration';
+const CART_DURATION_MS = 15 * 60 * 1000;
+
+export const CartProvider = ({ children }: { children: React.ReactNode }) => {
+  const [items, setItems] = useState<TicketItem[]>([]);
+  const [expirationTime, setExpirationTime] = useState<number | null>(null);
+  const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    const expRaw = localStorage.getItem(EXPIRATION_KEY);
+    if (raw && expRaw) {
+      try {
+        const parsed = JSON.parse(raw) as TicketItem[];
+        const expTime = parseInt(expRaw, 10);
+        if (Date.now() < expTime && parsed.length > 0) {
+          setItems(parsed);
+          setExpirationTime(expTime);
+        } else {
+          localStorage.removeItem(STORAGE_KEY);
+          localStorage.removeItem(EXPIRATION_KEY);
+        }
+      } catch {
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(EXPIRATION_KEY);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (items.length > 0) localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    else { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(EXPIRATION_KEY); setExpirationTime(null); }
+  }, [items]);
+
+  useEffect(() => {
+    if (expirationTime) localStorage.setItem(EXPIRATION_KEY, expirationTime.toString());
+  }, [expirationTime]);
+
+  useEffect(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (expirationTime && items.length > 0) {
+      const updateRemaining = () => {
+        const remaining = Math.max(0, Math.floor((expirationTime - Date.now()) / 1000));
+        setTimeRemaining(remaining);
+        if (remaining <= 0) {
+          setItems([]);
+          setExpirationTime(null);
+          setTimeRemaining(null);
+          localStorage.removeItem(STORAGE_KEY);
+          localStorage.removeItem(EXPIRATION_KEY);
+        }
+      };
+      updateRemaining();
+      timerRef.current = setInterval(updateRemaining, 1000);
+    } else setTimeRemaining(null);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [expirationTime, items.length]);
+
+  const addToCart = useCallback((item: Omit<TicketItem, 'quantity'>, quantity = 1) => {
+    setItems((prev) => {
+      const existing = prev.find((i) => i.id === item.id);
+      if (existing) return prev.map((i) => i.id === item.id ? { ...i, quantity: i.quantity + quantity } : i);
+      return [...prev, { ...item, quantity }];
+    });
+    setExpirationTime(Date.now() + CART_DURATION_MS);
+  }, []);
+
+  const removeFromCart = useCallback((id: string) => {
+    setItems((prev) => {
+      const newItems = prev.filter((i) => i.id !== id);
+      if (newItems.length === 0) setExpirationTime(null);
+      return newItems;
+    });
+  }, []);
+
+  const clearCart = useCallback(() => {
+    setItems([]);
+    setExpirationTime(null);
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(EXPIRATION_KEY);
+  }, []);
+
+  const total = useMemo(() => items.reduce((sum, item) => sum + item.price * item.quantity, 0), [items]);
+  const value = useMemo(() => ({ items, addToCart, removeFromCart, clearCart, total, timeRemaining }), [addToCart, clearCart, items, removeFromCart, total, timeRemaining]);
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
+};
+
+export const useCart = () => {
+  const ctx = useContext(CartContext);
+  if (!ctx) throw new Error('useCart must be used within CartProvider');
+  return ctx;
+};
+
+
+################################################################################
+# src/state/currency.tsx
+################################################################################
+
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+
+export type CurrencyCode = 'EUR' | 'USD';
+const STORAGE_KEY = 'viagogo-clone-currency';
+const EUR_TO_USD = 1.08;
+
+type CurrencyContextValue = {
+  currency: CurrencyCode;
+  setCurrency: (code: CurrencyCode) => void;
+  formatPrice: (amountEur: number, options?: { decimals?: number }) => string;
+  symbol: string;
+};
+
+const CurrencyContext = createContext<CurrencyContextValue | undefined>(undefined);
+
+export const CurrencyProvider = ({ children }: { children: React.ReactNode }) => {
+  const [currency, setCurrencyState] = useState<CurrencyCode>('EUR');
+
+  useEffect(() => {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw === 'EUR' || raw === 'USD') setCurrencyState(raw);
+  }, []);
+
+  useEffect(() => { localStorage.setItem(STORAGE_KEY, currency); }, [currency]);
+
+  const setCurrency = useCallback((code: CurrencyCode) => setCurrencyState(code), []);
+  const formatPrice = useCallback((amountEur: number, options?: { decimals?: number }) => {
+    const decimals = options?.decimals ?? 0;
+    const value = currency === 'USD' ? amountEur * EUR_TO_USD : amountEur;
+    const formatted = value.toFixed(decimals);
+    const symbol = currency === 'USD' ? '$' : '€';
+    return currency === 'USD' ? `${symbol}${formatted}` : `${formatted} ${symbol}`;
+  }, [currency]);
+
+  const symbol = currency === 'USD' ? '$' : '€';
+  const value = useMemo(() => ({ currency, setCurrency, formatPrice, symbol }), [currency, setCurrency, formatPrice, symbol]);
+  return <CurrencyContext.Provider value={value}>{children}</CurrencyContext.Provider>;
+};
+
+export const useCurrency = () => {
+  const ctx = useContext(CurrencyContext);
+  if (!ctx) throw new Error('useCurrency must be used within CurrencyProvider');
+  return ctx;
+};
+
+
+################################################################################
+# src/shared/fakeEvents.ts
+################################################################################
+
+export type FakeEvent = {
+  id: string;
+  slug: string;
+  artist: string;
+  city: string;
+  venue: string;
+  dateLabel: string;
+  category: 'kpop' | 'poprock' | 'autre';
+  fromPrice: number;
+  imageUrl: string;
+};
+
+export const fakeEvents: FakeEvent[] = [
+  { id: 'bruno-mars-paris', slug: '/concerts/bruno-mars', artist: 'Bruno Mars', city: 'Saint-Denis', venue: 'Stade de France', dateLabel: 'Jeudi 18 juin 2026', category: 'poprock', fromPrice: 187, imageUrl: 'https://i.scdn.co/image/ab6761610000e5ebc36dd9eb55fb0db4911f25dd' },
+  { id: 'bts-paris-1', slug: '/concerts/bts', artist: 'BTS', city: 'Paris', venue: 'Accor Arena', dateLabel: 'Samedi 15 mars 2025', category: 'kpop', fromPrice: 120, imageUrl: '/bts.jpg' },
+  { id: 'bts-lyon-1', slug: '/concerts/bts', artist: 'BTS', city: 'Lyon', venue: 'Groupama Stadium', dateLabel: 'Dimanche 16 mars 2025', category: 'kpop', fromPrice: 95, imageUrl: '/bts.jpg' },
+  { id: 'coldplay-paris', slug: '/concerts/coldplay', artist: 'Coldplay', city: 'Paris', venue: 'Stade de France', dateLabel: 'Samedi 3 octobre 2026', category: 'poprock', fromPrice: 80, imageUrl: '/coldplay.png' }
+];
+
+
+################################################################################
+# src/shared/exampleSales.ts
+################################################################################
+
+export const MY_LISTINGS_KEY = 'viagogo-clone-my-listings';
+export const PAST_SALES_KEY = 'viagogo-clone-past-sales';
+
+export type ListingItem = { id?: string; eventName?: string; date?: string; city?: string; quantity?: number; };
+export type PastSaleItem = ListingItem & { price?: number; soldAt?: string; };
+
+const EXAMPLE_LISTINGS: ListingItem[] = [
+  { id: 'ex-1', eventName: 'BTS', date: '2025-03-15', city: 'Paris', quantity: 2 },
+  { id: 'ex-2', eventName: 'Coldplay', date: '2025-07-22', city: 'Lyon', quantity: 1 },
+  { id: 'ex-3', eventName: 'Bruno Mars', date: '2026-06-18', city: 'Saint-Denis', quantity: 4 },
+];
+
+const EXAMPLE_PAST_SALES: PastSaleItem[] = [
+  { id: 'past-1', eventName: 'BTS', date: '2024-09-10', city: 'Paris', quantity: 2, price: 95, soldAt: '2024-08-15' },
+  { id: 'past-2', eventName: 'Coldplay', date: '2024-06-08', city: 'Nantes', quantity: 1, price: 78, soldAt: '2024-05-20' },
+  { id: 'past-3', eventName: 'Concert Jazz', date: '2024-04-12', city: 'Bordeaux', quantity: 3, price: 45, soldAt: '2024-03-28' },
+];
+
+function getFromStorage<T>(key: string): T[] {
+  try {
+    const raw = localStorage.getItem(key);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch { return []; }
+}
+
+export function seedExampleSalesIfEmpty(): void {
+  const current = getFromStorage<unknown>(MY_LISTINGS_KEY);
+  const past = getFromStorage<unknown>(PAST_SALES_KEY);
+  if (current.length === 0) try { localStorage.setItem(MY_LISTINGS_KEY, JSON.stringify(EXAMPLE_LISTINGS)); } catch {}
+  if (past.length === 0) try { localStorage.setItem(PAST_SALES_KEY, JSON.stringify(EXAMPLE_PAST_SALES)); } catch {}
+}
+
+export function getCurrentListings(): ListingItem[] {
+  return getFromStorage<ListingItem>(MY_LISTINGS_KEY);
+}
+
+export function getPastSales(): PastSaleItem[] {
+  return getFromStorage<PastSaleItem>(PAST_SALES_KEY);
+}
+
+
+################################################################################
+# src/styles.css — FICHIER PRINCIPAL (résumé)
+# Le fichier complet fait ~1800 lignes. Il est dans : src/styles.css
+# Contient : variables CSS, topbar, nav, cart, event-card, ticket-row, checkout, login, hero, trust-section, media queries, etc.
+################################################################################
+[Voir le fichier src/styles.css dans le projet pour le CSS complet.]
+
+
+################################################################################
+# src/components/StadiumPlan.tsx
+################################################################################
+[Contenu : voir src/components/StadiumPlan.tsx — plan SVG stade avec blocs, badges prix, useCurrency.]
+
+
+################################################################################
+# src/pages/HomeTickets.tsx
+################################################################################
+[Contenu : hero, sections événements populaires / concerts / sports / spectacles, trust, stats, recherche.]
+
+
+################################################################################
+# src/pages/Login.tsx — src/pages/Account.tsx — src/pages/Faq.tsx
+################################################################################
+[Login : formulaire email/mot de passe, redirection. Account : annonces/ventes, lien mes-ventes. Faq : blocs questions/réponses.]
+
+
+################################################################################
+# src/pages/Checkout.tsx — src/pages/SellTickets.tsx
+################################################################################
+[Checkout : étapes panier → coordonnées → paiement → confirmation. SellTickets : formulaire artiste/ville/date/prix/quantité, liste événements.]
+
+
+################################################################################
+# src/pages/EventTickets.tsx — EventDateDetails — VentesPassees — MarketplaceEventPage
+################################################################################
+[EventTickets : liste dates par artiste. EventDateDetails : wrapper vers MarketplaceEventPage. VentesPassees : liste ventes passées. MarketplaceEventPage : plan stade + liste annonces, addToCart.]
+
+
+################################################################################
+# src/pages/BrunoMarsListingPage.tsx — BtsTickets.tsx — ColdplayTickets.tsx
+################################################################################
+[Pages listant événements Bruno Mars / BTS / Coldplay avec liens et panier.]
+
+
+################################################################################
+# src/shared/stadiumBlocks.ts — stadiumConfig.ts — stadiumGeometry.ts
+################################################################################
+[Définition blocs stade (STADIUM_BLOCKS), couleurs, SVG path, config Stade de France, géométrie ellipse.]
+
+
+################################################################################
+# src/shared/marketplaceStore.ts
+################################################################################
+[useMarketplaceState, mockListings, Listing, ZoneId, génération annonces par bloc.]
+
+
+################################################################################
+# src/utils/planBlockMap.ts
+################################################################################
+[buildBlockMapFromImage, getBlockAt, détection zones vertes sur image plan.]
+
+
+################################################################################
+# src/pages/MarketplaceEventPage.css — BrunoMarsListingPage.css
+################################################################################
+[Styles page marketplace (vg-header, vg-card, vg-listings…) et page listing Bruno Mars (vg-event-card, event-date…). Voir fichiers .css dans src/pages/.]
+
+
+================================================================================
+  FIN DU FICHIER UNIQUE
+  Pour le code exécutable complet, le projet reste dans : c:\Users\Admin\cursor vgg
+  Fichiers complets : index.html, package.json, vite.config.ts, src/main.tsx, src/App.tsx,
+  src/components/Layout.tsx, ErrorBoundary.tsx, src/state/*.tsx, src/shared/fakeEvents.ts, exampleSales.ts
+  sont inclus ci-dessus. Autres fichiers : voir dossiers src/pages, src/components, src/shared, src/utils.
+================================================================================
